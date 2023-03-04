@@ -49,3 +49,18 @@ class LocalityPage(Page):
 
     def get_locality_subpages(self):
         return self.get_children().type(LocalityPage).live()
+    
+class Localities(models.Model):
+        id_from_api = models.IntegerField()
+        city = models.CharField(max_length=255, null=True, blank=True)
+        slug = models.CharField(max_length=255, null=True, blank=True)
+        postal_code = models.CharField(max_length=20, null=True, blank=True)
+        country_code = models.CharField(max_length=10, null=True, blank=True)
+        lat = models.CharField(max_length=255, null=True, blank=True)
+        lng = models.CharField(max_length=255, null=True, blank=True)
+        google_places_id = models.CharField(max_length=255, null=True, blank=True)
+        search_description = models.CharField(max_length=500, null=True, blank=True)
+        seo_title = models.CharField(max_length=255, null=True, blank=True)
+
+        def __str__(self):
+             return self.city

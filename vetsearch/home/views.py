@@ -1,11 +1,27 @@
 from django.shortcuts import render
 from django.http import HttpResponse
 from wagtail.core.models import Page
-from .models import LocalityPage
+from .models import LocalityPage, Localities
 from django.core.exceptions import ObjectDoesNotExist
+from rest_framework import generics
 
 import json
 import requests
+
+from .models import Localities
+from .serializers import LocalitiesSerializers
+
+
+class LocalitiesAll(generics.ListCreateAPIView):
+    queryset = Localities.objects.all()
+    serializer_class = LocalitiesSerializers
+
+
+class LocalitiesDetail(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Localities.objects.all()
+    serializer_class = LocalitiesSerializers
+    lookup_field = 'slug'
+
 
 def convert_json(self):
     
@@ -43,23 +59,51 @@ def convert_json(self):
 
 
     # Works
-    for page in converted:
+    # for page in converted:
         
-        ind = 0
+    #     ind = 0
+    #     try:
+    #         page = Page.objects.get(title=page['city'])
+    #         ind=1
+
+    #     except ObjectDoesNotExist:
+    #         ind=2
+
+    #     if ind==2:
+    #         parent_page = Page.objects.get(title='Localities')
+    #         print(parent_page.slug)
+    #         locality_page = LocalityPage(
+    #             title=page['city'],
+    #             id_from_api=page['id_from_api'],
+    #             city=page['city'],
+    #             postal_code=page['postal_code'],
+    #             country_code=page['country_code'],
+    #             lat=page['lat'],
+    #             lng=page['lng'],
+    #             google_places_id=page['google_places_id'],
+    #             search_description="Benötigen Sie einen Tierarzt in " + page['city'] + " oder in Ihrer Nähe? Suchen Sie nicht länger. Mit Petleo Vet Search können Sie bequem und schnell den passenden Tierarzt in " + page['city'] + " finden und schnell online Termin buchen.",
+    #             seo_title=page['city'] + " Tierarztpraxis & Tierarzt in der Nähe | Tierarzttermine einfach online buchen"
+    #         )
+    #         parent_page.add_child(instance=locality_page)
+    #         locality_page.save()  
+
+
+
+
+    for page in converted:
+        ind=0
+
         try:
-            page = Page.objects.get(title=page['city'])
-            ind=1
+            page = Localities.objects.get(city=page['city'])
 
-        except ObjectDoesNotExist:
-            ind=2
-
-        if ind==2:
-            parent_page = Page.objects.get(title='Localities')
-            print(parent_page.slug)
-            locality_page = LocalityPage(
-                title=page['city'],
+        except Localities.DoesNotExist:
+            ind = 1
+        
+        if ind == 1:
+            locality_page = Localities(
                 id_from_api=page['id_from_api'],
                 city=page['city'],
+                slug=page['city'].lower(),
                 postal_code=page['postal_code'],
                 country_code=page['country_code'],
                 lat=page['lat'],
@@ -68,8 +112,7 @@ def convert_json(self):
                 search_description="Benötigen Sie einen Tierarzt in " + page['city'] + " oder in Ihrer Nähe? Suchen Sie nicht länger. Mit Petleo Vet Search können Sie bequem und schnell den passenden Tierarzt in " + page['city'] + " finden und schnell online Termin buchen.",
                 seo_title=page['city'] + " Tierarztpraxis & Tierarzt in der Nähe | Tierarzttermine einfach online buchen"
             )
-            parent_page.add_child(instance=locality_page)
-            locality_page.save()            
-    
+            locality_page.save()  
+                      
     return HttpResponse("adding")
 
