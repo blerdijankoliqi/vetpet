@@ -64,3 +64,33 @@ class Localities(models.Model):
 
         def __str__(self):
              return self.city
+
+
+class Clinic(models.Model):
+    id_from_api = models.IntegerField()
+    name = models.CharField(max_length=255, null=True, blank=True, default="Tierarzt")
+    lat = models.FloatField(null=True, blank=True)
+    lng = models.FloatField(null=True, blank=True)
+    btm_number = models.CharField(max_length=255, null=True, blank=True)
+    phone_number = models.CharField(max_length=255, null=True, blank=True)
+    google_places_id = models.CharField(max_length=255, null=True, blank=True)
+    email = models.EmailField(max_length=255, null=True, blank=True)
+    website = models.URLField(max_length=255, null=True, blank=True)
+    pipedrive_id = models.IntegerField(null=True, blank=True)
+    opening_hours = models.TextField(null=True, blank=True)
+    slug = models.SlugField(max_length=255, null=True, blank=True)
+    last_updated_time = models.DateTimeField(null=True, blank=True)
+    pims_type = models.CharField(max_length=255, null=True, blank=True)
+    branch = models.IntegerField(null=True, blank=True)
+    address = models.CharField(max_length=500, null=True, blank=True)
+    logo = models.URLField(max_length=255, null=True, blank=True)
+    meta_title = models.CharField(max_length=255, null=True, blank=True)
+    meta_description = models.CharField(max_length=500, null=True, blank=True)
+
+    def __str__(self):
+        return self.name
+
+
+
+
+
