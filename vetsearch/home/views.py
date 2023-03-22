@@ -47,8 +47,8 @@ class ClinicDetail(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated]
 
 
-def convert_json(self):
-    
+def convert_json(request):
+
     response_API = requests.get('https://api-development.petleo.de/v1/localities/')
     data = response_API.text
     parse_json = json.loads(data)
@@ -80,64 +80,32 @@ def convert_json(self):
             })
             id += 1
 
-
-
-    # Works
-    # for page in converted:
-        
-    #     ind = 0
-    #     try:
-    #         page = Page.objects.get(title=page['city'])
-    #         ind=1
-
-    #     except ObjectDoesNotExist:
-    #         ind=2
-
-    #     if ind==2:
-    #         parent_page = Page.objects.get(title='Localities')
-    #         print(parent_page.slug)
-    #         locality_page = LocalityPage(
-    #             title=page['city'],
-    #             id_from_api=page['id_from_api'],
-    #             city=page['city'],
-    #             postal_code=page['postal_code'],
-    #             country_code=page['country_code'],
-    #             lat=page['lat'],
-    #             lng=page['lng'],
-    #             google_places_id=page['google_places_id'],
-    #             search_description="Benötigen Sie einen Tierarzt in " + page['city'] + " oder in Ihrer Nähe? Suchen Sie nicht länger. Mit Petleo Vet Search können Sie bequem und schnell den passenden Tierarzt in " + page['city'] + " finden und schnell online Termin buchen.",
-    #             seo_title=page['city'] + " Tierarztpraxis & Tierarzt in der Nähe | Tierarzttermine einfach online buchen"
-    #         )
-    #         parent_page.add_child(instance=locality_page)
-    #         locality_page.save()  
-
-
-
-
     for page in converted:
-        ind=0
+        locality, created = Localities.objects.get_or_create(
+            id_from_api=page['id_from_api'],
+            city=page['city'],
+            defaults={
+                "slug": page['city'].lower(),
+                "postal_code": page['postal_code'],
+                "country_code": page['country_code'],
+                "lat": page['lat'],
+                "lng": page['lng'],
+                "google_places_id": page['google_places_id'],
+                "search_description": "Benötigen Sie einen Tierarzt in " + page['city'] + " oder in Ihrer Nähe? Suchen Sie nicht länger. Mit Petleo Vet Search können Sie bequem und schnell den passenden Tierarzt in " + page['city'] + " finden und schnell online Termin buchen.",
+                "seo_title": page['city'] + " Tierarztpraxis & Tierarzt in der Nähe | Tierarzttermine einfach online buchen"
+            }
+        )
 
-        try:
-            page = Localities.objects.get(city=page['city'])
+        if not created:
+            # If the object already exists, update the other fields without overriding search_description and seo_title
+            locality.slug = page['city'].lower()
+            locality.postal_code = page['postal_code']
+            locality.country_code = page['country_code']
+            locality.lat = page['lat']
+            locality.lng = page['lng']
+            locality.google_places_id = page['google_places_id']
+            locality.save()
 
-        except Localities.DoesNotExist:
-            ind = 1
-        
-        if ind == 1:
-            locality_page = Localities(
-                id_from_api=page['id_from_api'],
-                city=page['city'],
-                slug=page['city'].lower(),
-                postal_code=page['postal_code'],
-                country_code=page['country_code'],
-                lat=page['lat'],
-                lng=page['lng'],
-                google_places_id=page['google_places_id'],
-                search_description="Benötigen Sie einen Tierarzt in " + page['city'] + " oder in Ihrer Nähe? Suchen Sie nicht länger. Mit Petleo Vet Search können Sie bequem und schnell den passenden Tierarzt in " + page['city'] + " finden und schnell online Termin buchen.",
-                seo_title=page['city'] + " Tierarztpraxis & Tierarzt in der Nähe | Tierarzttermine einfach online buchen"
-            )
-            locality_page.save() 
-                      
     return HttpResponse("adding")
 
 
@@ -158,65 +126,44 @@ def convert_and_save_all_clinics(self):
         response = requests.get(f'{api_url}?page={page}', headers=headers)
         input_json = response.json()
 
-        for clinic in input_json["results"]:
-            if clinic["name"] == None:
-                new_clinic = {
-                    "id":clinic["id"],
-                    "id_from_api": clinic["id"],
-                    "name": clinic["name"],
-                    "lat": clinic["lat"],
-                    "lng": clinic["lng"],
-                    "btm_number": clinic["btm_number"],
-                    "phone_number": clinic["phone_number"],
-                    "google_places_id": clinic["google_places_id"],
-                    "email": clinic["email"],
-                    "website": clinic["website"],
-                    "pipedrive_id": clinic["pipedrive_id"],
-                    "opening_hours": clinic["opening_hours"],
-                    "slug": clinic["slug"],
-                    "last_updated_time": clinic["last_updated_time"],
-                    "pims_type": clinic["pims_type"],
-                    "branch": clinic["branch"],
-                    "address": clinic["address"],
-                    "logo": clinic["logo"],
-                    "meta_title": "Termin Tierarzt",
-                    "meta_description": "Vereinbaren Sie online einen Termin mit Tierarzt ➤ Öffnungszeiten ✓ Telefonnummer ✉ Adresse"
-                }
-                # Save clinic to the database
-                Clinic.objects.update_or_create(
-                    id=new_clinic["id"],
-                    defaults=new_clinic
-                )
+        for clinic_data in input_json["results"]:
+            # Define the fields that should be updated
+            update_fields = {
+                "name": clinic_data["name"],
+                "lat": clinic_data["lat"],
+                "lng": clinic_data["lng"],
+                "btm_number": clinic_data["btm_number"],
+                "phone_number": clinic_data["phone_number"],
+                "google_places_id": clinic_data["google_places_id"],
+                "email": clinic_data["email"],
+                "website": clinic_data["website"],
+                "pipedrive_id": clinic_data["pipedrive_id"],
+                "opening_hours": clinic_data["opening_hours"],
+                "slug": clinic_data["slug"],
+                "last_updated_time": clinic_data["last_updated_time"],
+                "pims_type": clinic_data["pims_type"],
+                "branch": clinic_data["branch"],
+                "address": clinic_data["address"],
+                "logo": clinic_data["logo"],
+            }
 
+            try:
+                # Check if the object already exists in the database
+                clinic = Clinic.objects.get(id_from_api=clinic_data["id"])
+            except Clinic.DoesNotExist:
+                # The object doesn't exist, include the meta_description field for creation
+                update_fields["meta_description"] = "Vereinbaren Sie online einen Termin mit " + (clinic_data["name"] or "Tierarzt") + " ➤ Öffnungszeiten ✓ Telefonnummer ✉ Adresse"
+                update_fields["meta-title"] = "Termin " + (clinic_data["name"] or "Tierarzt")
+
+
+                # Create the object with the provided fields
+                clinic = Clinic.objects.create(id_from_api=clinic_data["id"], **update_fields)
+                clinic.save()
             else:
-                new_clinic = {
-                    "id":clinic["id"],
-                    "id_from_api": clinic["id"],
-                    "name": clinic["name"],
-                    "lat": clinic["lat"],
-                    "lng": clinic["lng"],
-                    "btm_number": clinic["btm_number"],
-                    "phone_number": clinic["phone_number"],
-                    "google_places_id": clinic["google_places_id"],
-                    "email": clinic["email"],
-                    "website": clinic["website"],
-                    "pipedrive_id": clinic["pipedrive_id"],
-                    "opening_hours": clinic["opening_hours"],
-                    "slug": clinic["slug"],
-                    "last_updated_time": clinic["last_updated_time"],
-                    "pims_type": clinic["pims_type"],
-                    "branch": clinic["branch"],
-                    "address": clinic["address"],
-                    "logo": clinic["logo"],
-                    "meta_title": "Termin " + clinic["name"],
-                    "meta_description": "Vereinbaren Sie online einen Termin mit " + clinic["name"] + " ➤ Öffnungszeiten ✓ Telefonnummer ✉ Adresse"
-                }
-                # Save clinic to the database
-                Clinic.objects.update_or_create(
-                    id=new_clinic["id"],
-                    defaults=new_clinic
-                )
-
+                # The object exists, update only the specified fields
+                for field, value in update_fields.items():
+                    setattr(clinic, field, value)
+                clinic.save()
 
         # Check if there is a next page
         has_next = input_json["next"] is not None

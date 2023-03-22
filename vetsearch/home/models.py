@@ -3,6 +3,8 @@ from django.db import models
 from wagtail.core.models import Page
 from wagtail.core.fields import RichTextField
 from wagtail.admin.edit_handlers import FieldPanel
+from django.template.defaultfilters import slugify
+from django.utils.text import get_valid_filename
 
 from wagtail.api import APIField
 
@@ -86,6 +88,23 @@ class Clinic(models.Model):
     logo = models.URLField(max_length=255, null=True, blank=True)
     meta_title = models.CharField(max_length=255, null=True, blank=True)
     meta_description = models.CharField(max_length=500, null=True, blank=True)
+
+    def save(self, *args, **kwargs):
+        # Create a slug if it's not provided
+        if not self.slug:
+            self.slug = slugify(self.name)
+
+        # Check for slug uniqueness
+        slug = self.slug
+        counter = 1
+        while Clinic.objects.filter(slug=slug).exclude(id=self.id).exists():
+            slug = f"{self.slug}-{counter}"
+            counter += 1
+
+        self.slug = slug
+
+        # Save the object
+        super(Clinic, self).save(*args, **kwargs)
 
     def __str__(self):
         return self.name
