@@ -5,25 +5,34 @@ from .models import LocalityPage, Localities, Clinic
 from django.core.exceptions import ObjectDoesNotExist
 from rest_framework import generics
 import base64
-from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework.permissions import IsAuthenticated
-
-
-
-
 import json
 import requests
-
-from .models import Localities
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.permissions import IsAuthenticated
+from django.utils.text import slugify
 from .serializers import LocalitiesSerializers, ClinicSerializers
+from django.contrib.postgres.search import TrigramSimilarity
+
+from django.db.models import Q
+from rest_framework.filters import SearchFilter
 
 
 class LocalitiesAll(generics.ListCreateAPIView):
     queryset = Localities.objects.all()
     serializer_class = LocalitiesSerializers
-    filter_backends = [DjangoFilterBackend]
-    filterset_fields = ["id", "id_from_api", "city", "slug", "postal_code", "country_code", "lat", "lng", "google_places_id", "search_description", "seo_title"]
+    filter_backends = [DjangoFilterBackend, SearchFilter]
+    filterset_fields = ["id", "id_from_api", "slug", "postal_code", "country_code", "lat", "lng", "google_places_id", "search_description", "seo_title"]
+    search_fields = ['city']
     permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        city = self.request.query_params.get('city', None)
+
+        if city is not None:
+            queryset = queryset.filter(city__icontains=city)
+
+        return queryset
 
 
 class LocalitiesDetail(generics.RetrieveUpdateDestroyAPIView):
@@ -45,6 +54,15 @@ class ClinicDetail(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = ClinicSerializers
     lookup_field = 'slug'
     permission_classes = [IsAuthenticated]
+
+
+def unique_slug_generator(base_slug):
+    counter = 1
+    slug = base_slug
+    while Localities.objects.filter(slug=slug).exists():
+        slug = f"{base_slug}-{counter}"
+        counter += 1
+    return slug
 
 
 def convert_json(request):
@@ -81,11 +99,13 @@ def convert_json(request):
             id += 1
 
     for page in converted:
+        page_slug = unique_slug_generator(slugify(page['city']))
+
         locality, created = Localities.objects.get_or_create(
             id_from_api=page['id_from_api'],
             city=page['city'],
             defaults={
-                "slug": page['city'].lower(),
+                "slug": page_slug,
                 "postal_code": page['postal_code'],
                 "country_code": page['country_code'],
                 "lat": page['lat'],
@@ -98,7 +118,7 @@ def convert_json(request):
 
         if not created:
             # If the object already exists, update the other fields without overriding search_description and seo_title
-            locality.slug = page['city'].lower()
+            locality.slug = page_slug
             locality.postal_code = page['postal_code']
             locality.country_code = page['country_code']
             locality.lat = page['lat']
@@ -129,6 +149,7 @@ def convert_and_save_all_clinics(self):
         for clinic_data in input_json["results"]:
             # Define the fields that should be updated
             update_fields = {
+                "id_from_api": clinic_data["id"],
                 "name": clinic_data["name"],
                 "lat": clinic_data["lat"],
                 "lng": clinic_data["lng"],
@@ -147,23 +168,29 @@ def convert_and_save_all_clinics(self):
                 "logo": clinic_data["logo"],
             }
 
-            try:
-                # Check if the object already exists in the database
-                clinic = Clinic.objects.get(id_from_api=clinic_data["id"])
-            except Clinic.DoesNotExist:
+            clinics = Clinic.objects.filter(id_from_api=clinic_data["id"])
+
+            if not clinics:
                 # The object doesn't exist, include the meta_description field for creation
                 update_fields["meta_description"] = "Vereinbaren Sie online einen Termin mit " + (clinic_data["name"] or "Tierarzt") + " ➤ Öffnungszeiten ✓ Telefonnummer ✉ Adresse"
-                update_fields["meta-title"] = "Termin " + (clinic_data["name"] or "Tierarzt")
-
+                update_fields["meta_title"] = "Termin " + (clinic_data["name"] or "Tierarzt")
 
                 # Create the object with the provided fields
-                clinic = Clinic.objects.create(id_from_api=clinic_data["id"], **update_fields)
+                clinic = Clinic.objects.create(**update_fields)
                 clinic.save()
-            else:
+            elif len(clinics) == 1:
+                clinic = clinics.first()
                 # The object exists, update only the specified fields
                 for field, value in update_fields.items():
                     setattr(clinic, field, value)
                 clinic.save()
+            else:
+                # Handle the case when multiple objects are returned
+                # Update only the specified fields (without meta_title and meta_description)
+                for clinic in clinics:
+                    for field, value in update_fields.items():
+                        setattr(clinic, field, value)
+                    clinic.save()
 
         # Check if there is a next page
         has_next = input_json["next"] is not None
@@ -172,4 +199,6 @@ def convert_and_save_all_clinics(self):
         page += 1
 
     return JsonResponse({"message": "All clinics saved successfully."}, status=201)
+
+
 

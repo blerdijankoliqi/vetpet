@@ -64,6 +64,7 @@ class Localities(models.Model):
         search_description = models.CharField(max_length=500, null=True, blank=True)
         seo_title = models.CharField(max_length=255, null=True, blank=True)
 
+
         def __str__(self):
              return self.city
 
