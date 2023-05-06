@@ -21,7 +21,7 @@ class LocalitiesAll(generics.ListCreateAPIView):
     queryset = Localities.objects.all()
     serializer_class = LocalitiesSerializers
     filter_backends = [DjangoFilterBackend, SearchFilter]
-    filterset_fields = ["id", "id_from_api", "slug", "postal_code", "country_code", "lat", "lng", "google_places_id", "search_description", "seo_title"]
+    filterset_fields = ["id", "id_from_api", "slug", "postal_code", "postalslug", "country_code", "lat", "lng", "google_places_id", "search_description", "seo_title"]
     search_fields = ['city']
     permission_classes = [IsAuthenticated]
 
@@ -64,6 +64,21 @@ def unique_slug_generator(base_slug):
         counter += 1
     return slug
 
+def replace_german_letters(string):
+    replacements = {
+        "ä": "ae",
+        "ö": "oe",
+        "ß": "ss",
+        "ü": "ue",
+        "æ": "ae",
+        "ø": "oe",
+        "å": "aa",
+        "é": "e",
+        "è": "e"
+    }
+    for letter, replacement in replacements.items():
+        string = string.replace(letter, replacement)
+    return string
 
 def convert_json(request):
 
@@ -99,13 +114,16 @@ def convert_json(request):
             id += 1
 
     for page in converted:
-        page_slug = unique_slug_generator(slugify(page['city']))
+        clean_city = replace_german_letters(page['city'])
+        page_slug = unique_slug_generator(slugify(clean_city))
+        page_postalslug = f"{page['postal_code']}-{page_slug}"
 
         locality, created = Localities.objects.get_or_create(
             id_from_api=page['id_from_api'],
             city=page['city'],
             defaults={
                 "slug": page_slug,
+                "postalslug": page_postalslug,
                 "postal_code": page['postal_code'],
                 "country_code": page['country_code'],
                 "lat": page['lat'],
@@ -119,6 +137,7 @@ def convert_json(request):
         if not created:
             # If the object already exists, update the other fields without overriding search_description and seo_title
             locality.slug = page_slug
+            locality.postalslug = page_postalslug
             locality.postal_code = page['postal_code']
             locality.country_code = page['country_code']
             locality.lat = page['lat']
