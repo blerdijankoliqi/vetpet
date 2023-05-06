@@ -57,6 +57,7 @@ class Localities(models.Model):
         city = models.CharField(max_length=255, null=True, blank=True)
         slug = models.CharField(max_length=255, null=True, blank=True)
         postal_code = models.CharField(max_length=20, null=True, blank=True)
+        postalslug = models.CharField(max_length=510, null=True, blank=True)
         country_code = models.CharField(max_length=10, null=True, blank=True)
         lat = models.CharField(max_length=255, null=True, blank=True)
         lng = models.CharField(max_length=255, null=True, blank=True)

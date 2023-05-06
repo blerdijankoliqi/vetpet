@@ -10,6 +10,7 @@ class LocalitiesSerializers(serializers.ModelSerializer):
             "city",
             "slug",
             "postal_code",
+            "postalslug",
             "country_code",
             "lat",
             "lng",
