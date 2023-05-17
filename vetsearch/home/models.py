@@ -64,6 +64,8 @@ class Localities(models.Model):
         google_places_id = models.CharField(max_length=255, null=True, blank=True)
         search_description = models.CharField(max_length=500, null=True, blank=True)
         seo_title = models.CharField(max_length=255, null=True, blank=True)
+        search_description_en = models.CharField(max_length=500, null=True, blank=True)
+        seo_title_en = models.CharField(max_length=255, null=True, blank=True)
 
 
         def __str__(self):
@@ -90,6 +92,8 @@ class Clinic(models.Model):
     logo = models.URLField(max_length=255, null=True, blank=True)
     meta_title = models.CharField(max_length=255, null=True, blank=True)
     meta_description = models.CharField(max_length=500, null=True, blank=True)
+    meta_title_en = models.CharField(max_length=255, null=True, blank=True)
+    meta_description_en = models.CharField(max_length=500, null=True, blank=True)
 
     def save(self, *args, **kwargs):
         # Create a slug if it's not provided
