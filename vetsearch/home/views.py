@@ -21,7 +21,7 @@ class LocalitiesAll(generics.ListCreateAPIView):
     queryset = Localities.objects.all()
     serializer_class = LocalitiesSerializers
     filter_backends = [DjangoFilterBackend, SearchFilter]
-    filterset_fields = ["id", "id_from_api", "slug", "postal_code", "postalslug", "country_code", "lat", "lng", "google_places_id", "search_description", "seo_title"]
+    filterset_fields = ["id", "id_from_api", "slug", "postal_code", "postalslug", "country_code", "lat", "lng", "google_places_id", "search_description", "seo_title", "search_description_en", "seo_title_en",]
     search_fields = ['city']
     permission_classes = [IsAuthenticated]
 
@@ -45,7 +45,7 @@ class ClinicAll(generics.ListCreateAPIView):
     queryset = Clinic.objects.all()
     serializer_class = ClinicSerializers
     filter_backends = [DjangoFilterBackend]
-    filterset_fields = ["id","id_from_api","name","lat","lng","btm_number","phone_number","google_places_id","email","website","pipedrive_id","opening_hours","slug","last_updated_time","pims_type","branch","address","logo","meta_title","meta_description"]
+    filterset_fields = ["id","id_from_api","name","lat","lng","btm_number","phone_number","google_places_id","email","website","pipedrive_id","opening_hours","slug","last_updated_time","pims_type","branch","address","logo","meta_title","meta_description","meta_title_en","meta_description_en"]
     permission_classes = [IsAuthenticated]
 
 
@@ -130,7 +130,9 @@ def convert_json(request):
                 "lng": page['lng'],
                 "google_places_id": page['google_places_id'],
                 "search_description": "Benötigen Sie einen Tierarzt in " + page['city'] + " oder in Ihrer Nähe? Suchen Sie nicht länger. Mit Petleo Vet Search können Sie bequem und schnell den passenden Tierarzt in " + page['city'] + " finden und schnell online Termin buchen.",
-                "seo_title": page['city'] + " Tierarztpraxis & Tierarzt in der Nähe | Tierarzttermine einfach online buchen"
+                "seo_title": page['city'] + " Tierarztpraxis & Tierarzt in der Nähe | Tierarzttermine einfach online buchen",
+                "search_description_en": "Do you need a vet in " + page['city'] + " or near you? Look no further. With Petleo Vet Search you can quickly and easily find the right veterinarian in " + page['city'] + " and quickly book an appointment online.",
+                "seo_title_en": page['city'] + " Veterinarian practice & vet nearby | Easily book vet appointments online",
             }
         )
 
@@ -193,6 +195,8 @@ def convert_and_save_all_clinics(self):
                 # The object doesn't exist, include the meta_description field for creation
                 update_fields["meta_description"] = "Vereinbaren Sie online einen Termin mit " + (clinic_data["name"] or "Tierarzt") + " ➤ Öffnungszeiten ✓ Telefonnummer ✉ Adresse"
                 update_fields["meta_title"] = "Termin " + (clinic_data["name"] or "Tierarzt")
+                update_fields["meta_description_en"] = "Make an appointment online with " + (clinic_data["name"] or "veterinarian") + " ➤ Opening times ✓ Telephone number ✉ Address"
+                update_fields["meta_title_en"] = "Appointment " + (clinic_data["name"] or "Vet")
 
                 # Create the object with the provided fields
                 clinic = Clinic.objects.create(**update_fields)
